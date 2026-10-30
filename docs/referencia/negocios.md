@@ -126,11 +126,91 @@ curl -X POST "https://app.clixx.com.br/api/v1/leads/123/negocios" \
 | `404` | Registro não encontrado. |
 | `422` | Um ou mais campos são inválidos. |
 
+## Listar negócios
+
+`GET https://app.clixx.com.br/api/v1/negocios`
+
+Lista os negócios da empresa, do mais recente para o mais antigo. Use este endpoint para descobrir o `id` de um negócio e o `lead_id` do lead vinculado.
+
+### Parâmetros
+
+| Nome | Onde | Tipo | Obrigatório | Descrição |
+| --- | --- | --- | --- | --- |
+| `lead_id` | Query | integer | Não | Filtra por lead. |
+| `pipeline_id` | Query | integer | Não | Filtra por pipeline. |
+| `etapa_id` | Query | integer | Não | Filtra por etapa. |
+| `status` | Query | string | Não | Valores: `aberto`, `ganho`, `perdido`. |
+| `responsavel_id` | Query | integer | Não | Filtra por usuário responsável. |
+| `page` | Query | integer | Não | Padrão: `1`. |
+| `per_page` | Query | integer | Não | Padrão: `20`. De 1 a 100. |
+
+### Exemplo
+
+```bash
+curl -X GET "https://app.clixx.com.br/api/v1/negocios" \
+  -H "Authorization: Bearer SEU_TOKEN"
+```
+
+**Negócios abertos de um pipeline**
+
+```bash
+curl -X GET "https://app.clixx.com.br/api/v1/negocios?pipeline_id=3&status=aberto" \
+  -H "Authorization: Bearer SEU_TOKEN"
+```
+
+**Negócios de um lead**
+
+```bash
+curl -X GET "https://app.clixx.com.br/api/v1/negocios?lead_id=123" \
+  -H "Authorization: Bearer SEU_TOKEN"
+```
+
+### Resposta (200)
+
+```json
+{
+  "success": true,
+  "negocios": [
+    {
+      "id": 42,
+      "lead_id": 123,
+      "lead_nome": "João da Silva",
+      "lead_celular": "11999999999",
+      "titulo": "Plano Premium 12 meses",
+      "pipeline_id": 1,
+      "etapa_id": 3,
+      "etapa_nome": "Negociação",
+      "status": "aberto",
+      "valor": "1500.00",
+      "responsavel_id": 5,
+      "temperatura": "quente",
+      "prioridade": "alta",
+      "data_fechamento_prevista": "2026-05-15",
+      "data_fechamento_real": null,
+      "created_at": "2026-04-01 09:00:00",
+      "updated_at": "2026-04-10 14:30:00"
+    }
+  ],
+  "total": 1,
+  "page": 1,
+  "per_page": 5,
+  "has_more": false
+}
+```
+
+### Erros
+
+| Código | Descrição |
+| --- | --- |
+| `401` | Token ausente ou inválido. |
+| `403` | Assinatura bloqueada. Nos relatórios de metas e negócios, também indica Modo Negócios desativado, com `reason` igual a `modo_negocios_inativo`. |
+| `422` | Requisição inválida. |
+
 ## Detalhar negócio
 
 `GET https://app.clixx.com.br/api/v1/negocios/{id}`
 
-Retorna um negócio e os IDs dos produtos vinculados.
+Retorna um negócio e os IDs dos produtos vinculados. O `id` aparece em Listar negócios.
 
 ### Parâmetros
 

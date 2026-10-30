@@ -318,7 +318,7 @@ paths:
       tags: [Leads]
       operationId: buscarLead
       summary: Buscar lead
-      description: Retorna o lead com pipeline, etapa e anúncio. Para buscar pelo telefone, use `id` igual a `0` e informe `celular`.
+      description: Retorna o lead com pipeline, etapa e anúncio. Para buscar pelo telefone, use `id` igual a `0` e informe `celular`. O `lead_id` também aparece em Listar negócios e em Listar inscrições.
       parameters:
         - { name: celular, in: query, schema: { type: string }, description: Celular do lead. }
       responses:
@@ -490,6 +490,62 @@ paths:
         '404': { $ref: '#/components/responses/NaoEncontrado' }
         '422': { $ref: '#/components/responses/ErroValidacao' }
 
+  /v1/negocios:
+    get:
+      tags: [Negócios]
+      operationId: listarNegocios
+      summary: Listar negócios
+      description: Lista os negócios da empresa, do mais recente para o mais antigo. Use este endpoint para descobrir o `id` de um negócio e o `lead_id` do lead vinculado.
+      x-exemplos:
+        - titulo: Negócios abertos de um pipeline
+          caminho: /v1/negocios?pipeline_id=3&status=aberto
+        - titulo: Negócios de um lead
+          caminho: /v1/negocios?lead_id=123
+      parameters:
+        - { name: lead_id, in: query, schema: { type: integer }, description: Filtra por lead. }
+        - { name: pipeline_id, in: query, schema: { type: integer }, description: Filtra por pipeline. }
+        - { name: etapa_id, in: query, schema: { type: integer }, description: Filtra por etapa. }
+        - { name: status, in: query, schema: { type: string, enum: [aberto, ganho, perdido] } }
+        - { name: responsavel_id, in: query, schema: { type: integer }, description: Filtra por usuário responsável. }
+        - { name: page, in: query, schema: { type: integer, minimum: 1, default: 1 } }
+        - { name: per_page, in: query, schema: { type: integer, minimum: 1, maximum: 100, default: 20 } }
+      responses:
+        '200':
+          description: Negócios encontrados.
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - type: object
+                    properties:
+                      success: { type: boolean, example: true }
+                      negocios:
+                        type: array
+                        items:
+                          type: object
+                          properties:
+                            id: { type: integer, example: 42 }
+                            lead_id: { type: integer, example: 123 }
+                            lead_nome: { type: string, example: João da Silva }
+                            lead_celular: { type: string, nullable: true, example: '11999999999' }
+                            titulo: { type: string, example: Plano Premium 12 meses }
+                            pipeline_id: { type: integer, example: 1 }
+                            etapa_id: { type: integer, example: 3 }
+                            etapa_nome: { type: string, nullable: true, example: Negociação }
+                            status: { type: string, enum: [aberto, ganho, perdido] }
+                            valor: { type: string, description: Valor em texto., example: '1500.00' }
+                            responsavel_id: { type: integer, nullable: true, example: 5 }
+                            temperatura: { type: string, nullable: true, example: quente }
+                            prioridade: { type: string, example: alta }
+                            data_fechamento_prevista: { type: string, nullable: true, example: '2026-05-15' }
+                            data_fechamento_real: { type: string, nullable: true }
+                            created_at: { type: string, example: '2026-04-01 09:00:00' }
+                            updated_at: { type: string, example: '2026-04-10 14:30:00' }
+                  - $ref: '#/components/schemas/Paginacao'
+        '401': { $ref: '#/components/responses/NaoAutorizado' }
+        '403': { $ref: '#/components/responses/Bloqueado' }
+        '422': { $ref: '#/components/responses/ErroGenerico' }
+
   /v1/negocios/{id}:
     parameters:
       - $ref: '#/components/parameters/Id'
@@ -497,7 +553,7 @@ paths:
       tags: [Negócios]
       operationId: detalharNegocio
       summary: Detalhar negócio
-      description: Retorna um negócio e os IDs dos produtos vinculados.
+      description: Retorna um negócio e os IDs dos produtos vinculados. O `id` aparece em Listar negócios.
       responses:
         '200':
           description: Negócio encontrado.

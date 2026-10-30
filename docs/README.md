@@ -31,4 +31,13 @@ curl https://app.clixx.com.br/api/anuncios \
   -H "Authorization: Bearer SEU_TOKEN"
 ```
 
+## Como encontrar os IDs
+
+| Você precisa de | Onde encontrar |
+| --- | --- |
+| ID do negócio | [Listar negócios](referencia/negocios.md) |
+| ID do lead | [Listar negócios](referencia/negocios.md), [Listar inscrições](referencia/inscricoes.md) ou [Buscar lead](referencia/leads.md) pelo celular |
+| ID da inscrição | [Listar inscrições](referencia/inscricoes.md) |
+| Hash do anúncio | [Listar anúncios](referencia/anuncios.md) |
+
 Veja também [Autenticação](guias/autenticacao.md) e [Erros e limites](guias/erros-e-limites.md).
