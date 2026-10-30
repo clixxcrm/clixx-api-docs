@@ -14,12 +14,12 @@ Todas as respostas são em JSON.
 
 | Recurso | Para quê |
 | --- | --- |
-| Anúncios | Listar anúncios ativos e gerar links de WhatsApp |
-| Inscrições | Criar, consultar e atualizar inscrições |
-| Leads | Consultar leads e movê-los no pipeline |
-| Negócios e propostas | Gerenciar oportunidades de cada lead |
-| Messenger | Guardar o estado da conversa de um chatbot |
-| Relatórios | Ler origens, metas, kanban e negócios |
+| [Anúncios](referencia/anuncios.md) | Listar anúncios ativos e gerar links de WhatsApp |
+| [Inscrições](referencia/inscricoes.md) | Criar, consultar e atualizar inscrições |
+| [Leads](referencia/leads.md) | Consultar leads e movê-los no pipeline |
+| [Negócios](referencia/negocios.md) e [propostas](referencia/propostas.md) | Gerenciar oportunidades de cada lead |
+| [Messenger](referencia/messenger.md) | Guardar o estado da conversa de um chatbot |
+| [Relatórios](referencia/relatorios.md) | Ler origens, metas, kanban e negócios |
 
 ## Primeiros passos
 

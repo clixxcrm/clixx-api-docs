@@ -107,6 +107,9 @@ paths:
       tags: [Inscrições]
       operationId: criarInscricao
       summary: Criar inscrição
+      x-exemplos:
+        - titulo: Inscrição com campos personalizados
+          corpo: { anuncio_hash: abc123, nome: João da Silva, celular: '11999999999', origem: messenger, psid: '1234567890123456', 5_email_comercial: email@exemplo.com, 12_cpf: '12345678900' }
       description: |
         Cria uma inscrição em um anúncio.
 
@@ -168,6 +171,11 @@ paths:
       tags: [Inscrições]
       operationId: listarInscricoes
       summary: Listar inscrições
+      x-exemplos:
+        - titulo: Verificar se um lead já está inscrito
+          caminho: /inscricoes?celular=11999999999
+        - titulo: Listar as inscrições de um anúncio
+          caminho: /inscricoes?anuncio_hash=abc123
       description: Lista inscrições com filtros e paginação. Use `celular` para verificar se um lead já está inscrito.
       parameters:
         - { name: celular, in: query, schema: { type: string }, description: Busca por celular. }
@@ -364,6 +372,16 @@ paths:
       tags: [Leads]
       operationId: atualizarLead
       summary: Atualizar lead
+      x-exemplos:
+        - titulo: Mover para uma etapa
+          corpo: { pipeline_id: 1, etapa_id: 5, status: qualificado }
+        - titulo: Mudar só o status
+          corpo: { status: convertido }
+        - titulo: Atualizar o valor estimado
+          corpo: { valor_estimado: 1500.00 }
+        - titulo: Localizar o lead pelo celular
+          caminho: /webhook/leads/0
+          corpo: { celular: '11999999999', status: qualificado }
       description: |
         Atualiza pipeline, etapa, status ou valor de um lead e dispara as regras de automação (`lead.stage_changed` e `lead.status_changed`).
 
