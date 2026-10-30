@@ -1,0 +1,11 @@
+$schema: https://api.gitbook.com/gitbook-docs.yaml
+site:
+  title: Clixx CRM Docs
+  structure:
+    - type: space
+      key: documentation
+      title: Documentação da API
+      path: documentation
+      default: true
+      content:
+        directory: ./docs
