@@ -1,0 +1,1164 @@
+openapi: 3.0.3
+info:
+  title: API do Clixx CRM
+  version: 1.0.0
+  description: Integre o Clixx CRM a chatbots, automações e sistemas próprios.
+servers:
+  - url: https://app.clixx.com.br/api
+security:
+  - bearerAuth: []
+  - tokenNaUrl: []
+tags:
+  - name: Anúncios
+    description: Anúncios ativos e links de WhatsApp.
+  - name: Inscrições
+    description: Criação e consulta de inscrições.
+  - name: Leads
+    description: Consulta de leads e movimentação no pipeline. Atualizar um lead dispara as regras de automação configuradas.
+  - name: Negócios
+    description: Oportunidades de cada lead. Um lead pode ter vários negócios.
+  - name: Propostas
+    description: Propostas vinculadas a um lead.
+  - name: Messenger
+    description: Estado da conversa durante uma inscrição pelo Messenger.
+  - name: Relatórios
+    description: Dados das telas de relatórios do painel, somente para leitura.
+
+paths:
+  /anuncios:
+    get:
+      tags: [Anúncios]
+      operationId: listarAnuncios
+      summary: Listar anúncios
+      description: Retorna os anúncios ativos da empresa.
+      responses:
+        '200':
+          description: Anúncios encontrados.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success: { type: boolean, example: true }
+                  total: { type: integer, example: 1 }
+                  anuncios:
+                    type: array
+                    items: { $ref: '#/components/schemas/AnuncioLista' }
+        '401': { $ref: '#/components/responses/NaoAutorizado' }
+        '403': { $ref: '#/components/responses/Bloqueado' }
+
+  /anuncios/{hash}:
+    get:
+      tags: [Anúncios]
+      operationId: detalharAnuncio
+      summary: Detalhar anúncio
+      description: Retorna os detalhes de um anúncio, com seus campos extras.
+      parameters:
+        - $ref: '#/components/parameters/Hash'
+      responses:
+        '200':
+          description: Anúncio encontrado.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success: { type: boolean, example: true }
+                  anuncio: { $ref: '#/components/schemas/AnuncioDetalhe' }
+        '401': { $ref: '#/components/responses/NaoAutorizado' }
+        '403': { $ref: '#/components/responses/Bloqueado' }
+        '404': { $ref: '#/components/responses/NaoEncontrado' }
+
+  /whatsapp/link/{hash}:
+    get:
+      tags: [Anúncios]
+      operationId: gerarLinkWhatsapp
+      summary: Gerar link de WhatsApp
+      description: Retorna o link do formulário e o link de WhatsApp de um anúncio. O campo `whatsapp` vem nulo quando não há número configurado.
+      parameters:
+        - $ref: '#/components/parameters/Hash'
+      responses:
+        '200':
+          description: Links gerados.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success: { type: boolean, example: true }
+                  anuncio:
+                    type: object
+                    properties:
+                      titulo: { type: string, example: Curso de Marketing }
+                      cidade: { type: string, example: São Paulo }
+                      estado: { type: string, example: SP }
+                  links:
+                    type: object
+                    properties:
+                      formulario: { type: string, example: 'https://app.clixx.com.br/inscricao/abc123' }
+                      whatsapp: { type: string, nullable: true, example: 'https://wa.me/5511999999999?text=...' }
+                      whatsapp_message: { type: string, example: Olá! Quero me inscrever. }
+        '401': { $ref: '#/components/responses/NaoAutorizado' }
+        '403': { $ref: '#/components/responses/Bloqueado' }
+        '404': { $ref: '#/components/responses/NaoEncontrado' }
+
+  /inscricao:
+    post:
+      tags: [Inscrições]
+      operationId: criarInscricao
+      summary: Criar inscrição
+      description: |
+        Cria uma inscrição em um anúncio.
+
+        Campos personalizados do anúncio são enviados no formato `{id}_{slug}`, por exemplo `5_nome_completo`.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [anuncio_hash, nome, celular]
+              properties:
+                anuncio_hash: { type: string, description: Hash do anúncio., example: abc123 }
+                nome: { type: string, minLength: 3, description: Nome completo., example: João da Silva }
+                celular: { type: string, description: Celular com no mínimo 10 dígitos., example: '11999999999' }
+                origem: { type: string, description: Origem da inscrição. Padrão `facebook`., example: messenger }
+                utm_source: { type: string }
+                utm_medium: { type: string }
+                utm_campaign: { type: string }
+                psid: { type: string, description: ID do usuário no Messenger. }
+              additionalProperties:
+                type: string
+                description: Campos personalizados no formato `{id}_{slug}`.
+      responses:
+        '201':
+          description: Inscrição criada.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success: { type: boolean, example: true }
+                  message: { type: string, example: Inscrição realizada com sucesso! }
+                  inscricao:
+                    type: object
+                    properties:
+                      id: { type: integer, example: 123 }
+                      lead_id: { type: integer, example: 456 }
+                      anuncio:
+                        type: object
+                        properties:
+                          id: { type: integer, example: 1 }
+                          titulo: { type: string, example: Curso de Marketing }
+                          cidade: { type: string, example: São Paulo }
+                  whatsapp_enviado: { type: boolean, example: false }
+        '400': { $ref: '#/components/responses/ErroGenerico' }
+        '401': { $ref: '#/components/responses/NaoAutorizado' }
+        '403': { $ref: '#/components/responses/Bloqueado' }
+        '404': { $ref: '#/components/responses/NaoEncontrado' }
+        '409':
+          description: Lead já inscrito neste anúncio.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Erro' }
+        '422': { $ref: '#/components/responses/ErroValidacao' }
+
+  /inscricoes:
+    get:
+      tags: [Inscrições]
+      operationId: listarInscricoes
+      summary: Listar inscrições
+      description: Lista inscrições com filtros e paginação. Use `celular` para verificar se um lead já está inscrito.
+      parameters:
+        - { name: celular, in: query, schema: { type: string }, description: Busca por celular. }
+        - { name: anuncio_hash, in: query, schema: { type: string }, description: Filtra pelo hash do anúncio. }
+        - { name: anuncio_id, in: query, schema: { type: integer }, description: Filtra pelo ID do anúncio. }
+        - { name: status, in: query, schema: { type: string, enum: [pendente, confirmado, cancelado] } }
+        - { name: busca, in: query, schema: { type: string }, description: Busca por nome ou telefone. }
+        - { name: data_inicial, in: query, schema: { type: string, format: date } }
+        - { name: data_final, in: query, schema: { type: string, format: date } }
+        - { name: page, in: query, schema: { type: integer, minimum: 1, default: 1 } }
+        - { name: per_page, in: query, schema: { type: integer, minimum: 1, maximum: 100, default: 20 } }
+      responses:
+        '200':
+          description: Inscrições encontradas.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success: { type: boolean, example: true }
+                  total: { type: integer, example: 1 }
+                  page: { type: integer, example: 1 }
+                  per_page: { type: integer, example: 20 }
+                  last_page: { type: integer, example: 1 }
+                  inscricoes:
+                    type: array
+                    items:
+                      type: object
+                      properties:
+                        id: { type: integer, example: 45 }
+                        lead_id: { type: integer, example: 123 }
+                        anuncio_id: { type: integer, example: 5 }
+                        origem: { type: string, example: formulario }
+                        status: { type: string, example: confirmado }
+                        created_at: { type: string, example: '2026-02-15 14:30:00' }
+                        lead: { $ref: '#/components/schemas/LeadInscricao' }
+                        anuncio: { $ref: '#/components/schemas/AnuncioResumo' }
+        '401': { $ref: '#/components/responses/NaoAutorizado' }
+        '403': { $ref: '#/components/responses/Bloqueado' }
+
+  /inscricoes/{id}:
+    parameters:
+      - $ref: '#/components/parameters/Id'
+    get:
+      tags: [Inscrições]
+      operationId: detalharInscricao
+      summary: Detalhar inscrição
+      description: Retorna a inscrição, o lead, o anúncio e os campos personalizados.
+      responses:
+        '200':
+          description: Inscrição encontrada.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success: { type: boolean, example: true }
+                  inscricao:
+                    type: object
+                    properties:
+                      id: { type: integer, example: 45 }
+                      lead_id: { type: integer, example: 123 }
+                      anuncio_id: { type: integer, example: 5 }
+                      origem: { type: string, example: formulario }
+                      status: { type: string, example: confirmado }
+                      utm_source: { type: string, nullable: true }
+                      utm_medium: { type: string, nullable: true }
+                      utm_campaign: { type: string, nullable: true }
+                      created_at: { type: string, example: '2026-02-15 14:30:00' }
+                      updated_at: { type: string, example: '2026-02-15 14:30:00' }
+                  lead:
+                    allOf:
+                      - $ref: '#/components/schemas/LeadInscricao'
+                      - type: object
+                        properties:
+                          origem: { type: string, example: formulario }
+                          created_at: { type: string, example: '2026-02-15 14:30:00' }
+                  anuncio: { $ref: '#/components/schemas/AnuncioResumo' }
+                  campos_extras:
+                    type: array
+                    items:
+                      type: object
+                      properties:
+                        campo_id: { type: integer, example: 3 }
+                        nome: { type: string, example: email_comercial }
+                        label: { type: string, example: E-mail Comercial }
+                        valor: { type: string, example: joao@empresa.com }
+        '401': { $ref: '#/components/responses/NaoAutorizado' }
+        '403': { $ref: '#/components/responses/Bloqueado' }
+        '404': { $ref: '#/components/responses/NaoEncontrado' }
+    put:
+      tags: [Inscrições]
+      operationId: atualizarInscricao
+      summary: Atualizar inscrição
+      description: Atualiza os dados do lead vinculado e/ou o status da inscrição. `POST` na mesma URL também é aceito.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                nome: { type: string, minLength: 3 }
+                celular: { type: string, description: Mínimo de 10 dígitos. }
+                email: { type: string }
+                cidade: { type: string }
+                estado: { type: string }
+                status: { type: string, enum: [ativo, inativo], description: Status do lead. }
+                tags: { type: string, description: Tags separadas por vírgula. }
+                temperatura: { type: string, enum: [frio, morno, quente] }
+                inscricao_status: { type: string, enum: [pendente, confirmado, cancelado], description: Status da inscrição. }
+      responses:
+        '200':
+          description: Inscrição atualizada.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success: { type: boolean, example: true }
+                  message: { type: string, example: Inscrição atualizada com sucesso }
+                  changes:
+                    type: array
+                    items: { type: string }
+                    example: [nome, inscricao_status]
+        '400': { $ref: '#/components/responses/ErroGenerico' }
+        '401': { $ref: '#/components/responses/NaoAutorizado' }
+        '403': { $ref: '#/components/responses/Bloqueado' }
+        '404': { $ref: '#/components/responses/NaoEncontrado' }
+        '422': { $ref: '#/components/responses/ErroGenerico' }
+
+  /webhook/leads/{id}:
+    parameters:
+      - name: id
+        in: path
+        required: true
+        schema: { type: integer }
+        description: ID do lead. Use `0` para localizar o lead pelo celular.
+    get:
+      tags: [Leads]
+      operationId: buscarLead
+      summary: Buscar lead
+      description: Retorna o lead com pipeline, etapa e anúncio. Para buscar pelo telefone, use `id` igual a `0` e informe `celular`.
+      parameters:
+        - { name: celular, in: query, schema: { type: string }, description: Celular do lead. }
+      responses:
+        '200':
+          description: Lead encontrado.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success: { type: boolean, example: true }
+                  lead:
+                    type: object
+                    properties:
+                      id: { type: integer, example: 123 }
+                      nome: { type: string, example: João da Silva }
+                      celular: { type: string, example: '11999999999' }
+                      email: { type: string, nullable: true, example: joao@email.com }
+                      cidade: { type: string, nullable: true, example: São Paulo }
+                      estado: { type: string, nullable: true, example: SP }
+                      status: { type: string, example: ativo }
+                      origem: { type: string, example: formulario }
+                      prioridade: { type: string, example: normal }
+                      created_at: { type: string, example: '2026-01-20 10:00:00' }
+                  pipeline:
+                    type: object
+                    nullable: true
+                    properties:
+                      id: { type: integer, example: 1 }
+                      nome: { type: string, example: Vendas }
+                  etapa:
+                    type: object
+                    nullable: true
+                    properties:
+                      id: { type: integer, example: 3 }
+                      nome: { type: string, example: Negociação }
+                      cor: { type: string, example: '#fd7e14' }
+                      ordem: { type: integer, example: 3 }
+                      is_final: { type: boolean, example: false }
+                  anuncio:
+                    type: object
+                    nullable: true
+                    properties:
+                      id: { type: integer, example: 5 }
+                      titulo: { type: string, example: Curso de Marketing }
+                      hash: { type: string, nullable: true, example: abc123 }
+        '401': { $ref: '#/components/responses/NaoAutorizado' }
+        '403': { $ref: '#/components/responses/Bloqueado' }
+        '404': { $ref: '#/components/responses/NaoEncontrado' }
+    put:
+      tags: [Leads]
+      operationId: atualizarLead
+      summary: Atualizar lead
+      description: |
+        Atualiza pipeline, etapa, status ou valor de um lead e dispara as regras de automação (`lead.stage_changed` e `lead.status_changed`).
+
+        Ao informar `pipeline_id` sem `etapa_id`, o lead vai para a primeira etapa do pipeline. Pipeline e etapa precisam ser da sua empresa. `POST` na mesma URL também é aceito.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                pipeline_id: { type: integer, description: Pipeline de destino. }
+                etapa_id: { type: integer, description: Etapa de destino. }
+                status:
+                  type: string
+                  enum: [ativo, qualificado, proposta_enviada, convertido, perdido, inativo, aguardando, em_negociacao]
+                valor_estimado: { type: number, nullable: true, description: Envie `null` para limpar., example: 1500.00 }
+                celular: { type: string, description: Localiza o lead quando a URL usa `id` igual a `0`. }
+      responses:
+        '200':
+          description: Lead atualizado.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success: { type: boolean, example: true }
+                  message: { type: string, example: Lead atualizado com sucesso }
+                  data:
+                    type: object
+                    properties:
+                      lead_id: { type: integer, example: 123 }
+                      changes:
+                        type: array
+                        items: { type: string }
+                        example: [etapa_id, status]
+                      eventos_disparados:
+                        type: array
+                        items: { type: string }
+                        example: [lead.stage_changed, lead.status_changed]
+        '400': { $ref: '#/components/responses/ErroGenerico' }
+        '401': { $ref: '#/components/responses/NaoAutorizado' }
+        '403': { $ref: '#/components/responses/Bloqueado' }
+        '404': { $ref: '#/components/responses/NaoEncontrado' }
+
+  /v1/leads/{id}/negocios:
+    parameters:
+      - $ref: '#/components/parameters/Id'
+    get:
+      tags: [Negócios]
+      operationId: listarNegociosDoLead
+      summary: Listar negócios do lead
+      parameters:
+        - $ref: '#/components/parameters/Page'
+        - $ref: '#/components/parameters/PerPage'
+        - { name: all, in: query, schema: { type: integer, enum: [1] }, description: Use `1` para retornar todos sem paginação. }
+      responses:
+        '200':
+          description: Negócios do lead.
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - type: object
+                    properties:
+                      success: { type: boolean, example: true }
+                      negocios:
+                        type: array
+                        items:
+                          allOf:
+                            - $ref: '#/components/schemas/Negocio'
+                            - type: object
+                              properties:
+                                etapa_nome: { type: string, example: Negociação }
+                  - $ref: '#/components/schemas/Paginacao'
+        '401': { $ref: '#/components/responses/NaoAutorizado' }
+        '403': { $ref: '#/components/responses/Bloqueado' }
+        '404': { $ref: '#/components/responses/NaoEncontrado' }
+    post:
+      tags: [Negócios]
+      operationId: criarNegocio
+      summary: Criar negócio
+      description: Cria um negócio para o lead. Sem `etapa_id`, usa a primeira etapa do pipeline padrão.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              allOf:
+                - $ref: '#/components/schemas/NegocioEntrada'
+                - type: object
+                  required: [titulo]
+      responses:
+        '200':
+          description: Negócio criado.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success: { type: boolean, example: true }
+                  id: { type: integer, example: 42 }
+                  message: { type: string, example: Negócio criado com sucesso. }
+        '401': { $ref: '#/components/responses/NaoAutorizado' }
+        '403': { $ref: '#/components/responses/Bloqueado' }
+        '404': { $ref: '#/components/responses/NaoEncontrado' }
+        '422': { $ref: '#/components/responses/ErroValidacao' }
+
+  /v1/negocios/{id}:
+    parameters:
+      - $ref: '#/components/parameters/Id'
+    get:
+      tags: [Negócios]
+      operationId: detalharNegocio
+      summary: Detalhar negócio
+      description: Retorna um negócio e os IDs dos produtos vinculados.
+      responses:
+        '200':
+          description: Negócio encontrado.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success: { type: boolean, example: true }
+                  negocio:
+                    allOf:
+                      - $ref: '#/components/schemas/Negocio'
+                      - type: object
+                        properties:
+                          produtos_ids:
+                            type: array
+                            items: { type: integer }
+                            example: [3, 7]
+        '401': { $ref: '#/components/responses/NaoAutorizado' }
+        '403': { $ref: '#/components/responses/Bloqueado' }
+        '404': { $ref: '#/components/responses/NaoEncontrado' }
+    put:
+      tags: [Negócios]
+      operationId: atualizarNegocio
+      summary: Atualizar negócio
+      description: |
+        Atualiza um negócio. `POST` na mesma URL também é aceito.
+
+        Ao trocar para uma etapa do tipo ganho ou perdido, o status é forçado para corresponder. Ao mudar apenas o `status`, sem trocar a etapa, sua escolha é respeitada, o que serve para reabrir um negócio.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              allOf:
+                - $ref: '#/components/schemas/NegocioEntrada'
+                - type: object
+                  required: [titulo]
+      responses:
+        '200':
+          description: Negócio atualizado.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success: { type: boolean, example: true }
+                  message: { type: string, example: Negócio atualizado. }
+        '401': { $ref: '#/components/responses/NaoAutorizado' }
+        '403': { $ref: '#/components/responses/Bloqueado' }
+        '404': { $ref: '#/components/responses/NaoEncontrado' }
+        '422': { $ref: '#/components/responses/ErroValidacao' }
+
+  /v1/leads/{id}/propostas:
+    parameters:
+      - $ref: '#/components/parameters/Id'
+    get:
+      tags: [Propostas]
+      operationId: listarPropostasDoLead
+      summary: Listar propostas do lead
+      parameters:
+        - $ref: '#/components/parameters/Page'
+        - $ref: '#/components/parameters/PerPage'
+      responses:
+        '200':
+          description: Propostas do lead.
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - type: object
+                    properties:
+                      success: { type: boolean, example: true }
+                      propostas:
+                        type: array
+                        items: { $ref: '#/components/schemas/Proposta' }
+                  - $ref: '#/components/schemas/Paginacao'
+        '401': { $ref: '#/components/responses/NaoAutorizado' }
+        '403': { $ref: '#/components/responses/Bloqueado' }
+        '404': { $ref: '#/components/responses/NaoEncontrado' }
+
+  /messenger/state:
+    post:
+      tags: [Messenger]
+      operationId: salvarEstadoMessenger
+      summary: Criar ou atualizar estado
+      description: Cria ou atualiza o estado do lead pelo PSID.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [psid, step, anuncio_hash]
+              properties:
+                psid: { type: string, description: ID do usuário no Messenger., example: '1234567890' }
+                step: { type: string, enum: [nome, celular, confirmacao] }
+                anuncio_hash: { type: string, example: abc123 }
+                nome: { type: string, description: Nome coletado na conversa. }
+                celular: { type: string, description: Celular coletado na conversa. }
+      responses:
+        '200':
+          description: Estado salvo.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/EstadoResposta' }
+        '400': { $ref: '#/components/responses/ErroGenerico' }
+        '401': { $ref: '#/components/responses/NaoAutorizado' }
+        '403': { $ref: '#/components/responses/Bloqueado' }
+        '404': { $ref: '#/components/responses/NaoEncontrado' }
+        '422': { $ref: '#/components/responses/ErroGenerico' }
+
+  /messenger/state/{psid}:
+    parameters:
+      - name: psid
+        in: path
+        required: true
+        schema: { type: string }
+        description: ID do usuário no Messenger.
+    get:
+      tags: [Messenger]
+      operationId: buscarEstadoMessenger
+      summary: Buscar estado
+      responses:
+        '200':
+          description: Estado encontrado.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/EstadoResposta' }
+        '401': { $ref: '#/components/responses/NaoAutorizado' }
+        '403': { $ref: '#/components/responses/Bloqueado' }
+        '404':
+          description: Estado não encontrado.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success: { type: boolean, example: false }
+                  message: { type: string, example: state_not_found }
+    delete:
+      tags: [Messenger]
+      operationId: removerEstadoMessenger
+      summary: Remover estado
+      description: Remove o estado do lead depois de concluir a inscrição.
+      responses:
+        '200':
+          description: Estado removido.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success: { type: boolean, example: true }
+        '401': { $ref: '#/components/responses/NaoAutorizado' }
+        '403': { $ref: '#/components/responses/Bloqueado' }
+
+  /v1/relatorios/origens:
+    get:
+      tags: [Relatórios]
+      operationId: relatorioOrigens
+      summary: Relatório de origens
+      description: |
+        Mostra de onde os leads vieram no período: totais, por origem, por anúncio Meta e por campanha UTM.
+
+        As listas por anúncio e por campanha trazem no máximo 50 itens, os de maior volume.
+      parameters:
+        - { name: periodo, in: query, schema: { type: string, enum: [hoje, 7d, 30d, 90d], default: 30d } }
+        - { name: data_inicial, in: query, schema: { type: string, format: date }, description: Envie junto com `data_final`. Substitui o período. }
+        - { name: data_final, in: query, schema: { type: string, format: date }, description: Envie junto com `data_inicial`. }
+      responses:
+        '200':
+          description: Relatório gerado.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success: { type: boolean, example: true }
+                  periodo:
+                    type: object
+                    properties:
+                      inicio: { type: string, example: '2026-08-01 00:00:00' }
+                      fim: { type: string, example: '2026-10-30 23:59:59' }
+                  resumo:
+                    type: object
+                    properties:
+                      total_leads: { type: integer, example: 120 }
+                      com_origem_canal: { type: integer, example: 45 }
+                      com_referral_meta: { type: integer, example: 30 }
+                      com_utm_campaign: { type: integer, example: 18 }
+                      anuncios_unicos: { type: integer, example: 4 }
+                      ctwa_pendentes: { type: integer, description: Conversas de anúncio que ainda não viraram lead., example: 2 }
+                  por_origem:
+                    type: array
+                    items:
+                      type: object
+                      properties:
+                        origem: { type: string, example: facebook }
+                        label: { type: string, example: Facebook }
+                        total: { type: integer, example: 45 }
+                  por_anuncio:
+                    type: array
+                    items:
+                      type: object
+                      properties:
+                        anuncio_id: { type: string, example: '6012345678901' }
+                        titulo: { type: string, nullable: true, example: Fale com a gente }
+                        texto: { type: string, nullable: true }
+                        link: { type: string, nullable: true }
+                        thumbnail_url: { type: string, nullable: true, description: URL temporária da Meta. }
+                        total: { type: integer, example: 12 }
+                  por_campanha:
+                    type: array
+                    items:
+                      type: object
+                      properties:
+                        utm_campaign: { type: string, example: black-friday }
+                        utm_medium: { type: string, nullable: true, example: cpc }
+                        total: { type: integer, example: 18 }
+        '401': { $ref: '#/components/responses/NaoAutorizado' }
+        '403': { $ref: '#/components/responses/Bloqueado' }
+        '422': { $ref: '#/components/responses/ErroGenerico' }
+
+  /v1/relatorios/metas:
+    get:
+      tags: [Relatórios]
+      operationId: relatorioMetas
+      summary: Relatório de metas
+      description: |
+        Metas e realizado de cada usuário ativo, mês a mês, com os totais gerais. Exige o Modo Negócios ativo.
+
+        O campo `percentual` vem nulo quando não há meta. O realizado soma os negócios ganhos no mês, e vendas de usuários inativos ou sem responsável não entram.
+      parameters:
+        - { name: ano, in: query, schema: { type: integer, minimum: 2000, maximum: 2100 }, description: Padrão é o ano atual. }
+      responses:
+        '200':
+          description: Relatório gerado.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success: { type: boolean, example: true }
+                  ano: { type: integer, example: 2026 }
+                  usuarios:
+                    type: array
+                    items:
+                      type: object
+                      properties:
+                        id: { type: integer, example: 7 }
+                        nome: { type: string, example: Maria Souza }
+                        meses:
+                          type: array
+                          items: { $ref: '#/components/schemas/MetaMes' }
+                        total: { $ref: '#/components/schemas/MetaValores' }
+                  geral:
+                    type: object
+                    properties:
+                      meses:
+                        type: array
+                        items: { $ref: '#/components/schemas/MetaMes' }
+                      total: { $ref: '#/components/schemas/MetaValores' }
+        '401': { $ref: '#/components/responses/NaoAutorizado' }
+        '403': { $ref: '#/components/responses/Bloqueado' }
+        '422': { $ref: '#/components/responses/ErroGenerico' }
+
+  /v1/relatorios/kanban:
+    get:
+      tags: [Relatórios]
+      operationId: relatorioKanban
+      summary: Relatório do kanban
+      description: Resumo do kanban de um pipeline, com leads e valores por etapa, ganhos, perdidos e taxas de conversão.
+      parameters:
+        - $ref: '#/components/parameters/PipelineId'
+        - $ref: '#/components/parameters/DataInicial'
+        - $ref: '#/components/parameters/DataFinal'
+        - $ref: '#/components/parameters/ResponsavelId'
+      responses:
+        '200':
+          description: Relatório gerado.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success: { type: boolean, example: true }
+                  pipeline: { $ref: '#/components/schemas/PipelineResumo' }
+                  filtros: { $ref: '#/components/schemas/Filtros' }
+                  resumo:
+                    type: object
+                    properties:
+                      total_leads: { type: integer, example: 35 }
+                      total_valor: { type: number, example: 51154.67 }
+                      leads_entrados: { type: integer, example: 35 }
+                      leads_ganho: { type: integer, example: 8 }
+                      leads_perdido: { type: integer, example: 4 }
+                      valor_ganho: { type: number, example: 45787.81 }
+                      valor_perdido: { type: number, example: 1138.21 }
+                      taxa_conversao: { type: number, description: 'Ganhos sobre finalizados, em %.', example: 66.7 }
+                      taxa_conversao_entrada: { type: number, description: 'Ganhos sobre entradas, em %.', example: 22.9 }
+                      eficiencia_liquida: { type: number, description: 'Ganhos menos perdidos sobre entradas, em %. Pode ser negativa.', example: 11.4 }
+                  etapas:
+                    type: array
+                    items:
+                      type: object
+                      properties:
+                        id: { type: integer, example: 12 }
+                        nome: { type: string, example: Negociação }
+                        ordem: { type: integer, example: 3 }
+                        cor: { type: string, example: '#fd7e14' }
+                        tipo: { type: string, example: normal }
+                        is_final: { type: boolean, example: false }
+                        total_leads: { type: integer, example: 9 }
+                        soma_valor: { type: number, example: 4098.52 }
+                        media_valor: { type: number, example: 455.39 }
+        '401': { $ref: '#/components/responses/NaoAutorizado' }
+        '403': { $ref: '#/components/responses/Bloqueado' }
+        '404': { $ref: '#/components/responses/NaoEncontrado' }
+        '422': { $ref: '#/components/responses/ErroGenerico' }
+
+  /v1/relatorios/negocios:
+    get:
+      tags: [Relatórios]
+      operationId: relatorioNegocios
+      summary: Relatório de negócios
+      description: Resumo dos negócios de um pipeline por status, etapa, mês, responsável, produto e previsão de fechamento. Exige o Modo Negócios ativo.
+      parameters:
+        - $ref: '#/components/parameters/PipelineId'
+        - $ref: '#/components/parameters/DataInicial'
+        - $ref: '#/components/parameters/DataFinal'
+        - $ref: '#/components/parameters/ResponsavelId'
+      responses:
+        '200':
+          description: Relatório gerado.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success: { type: boolean, example: true }
+                  pipeline: { $ref: '#/components/schemas/PipelineResumo' }
+                  filtros: { $ref: '#/components/schemas/Filtros' }
+                  resumo:
+                    type: object
+                    properties:
+                      total: { type: integer, example: 28 }
+                      qtd_aberto: { type: integer, example: 15 }
+                      qtd_ganho: { type: integer, example: 8 }
+                      qtd_perdido: { type: integer, example: 5 }
+                      valor_aberto: { type: number, example: 4098.52 }
+                      valor_ganho: { type: number, example: 45902.24 }
+                      valor_perdido: { type: number, example: 1138.21 }
+                      ticket_medio_ganho: { type: number, example: 6557.46 }
+                      taxa_conversao: { type: number, example: 61.5 }
+                  etapas:
+                    type: array
+                    items:
+                      type: object
+                      properties:
+                        id: { type: integer, example: 12 }
+                        nome: { type: string, example: Negociação }
+                        ordem: { type: integer, example: 3 }
+                        cor: { type: string, example: '#fd7e14' }
+                        tipo: { type: string, example: normal }
+                        qtd: { type: integer, example: 9 }
+                        valor: { type: number, example: 4098.52 }
+                        qtd_aberto: { type: integer, example: 9 }
+                        qtd_ganho: { type: integer, example: 0 }
+                        qtd_perdido: { type: integer, example: 0 }
+                  por_mes:
+                    type: array
+                    description: Últimos 12 meses com negócios fechados.
+                    items:
+                      type: object
+                      properties:
+                        mes: { type: string, example: 2026-10 }
+                        ganhos: { type: integer, example: 3 }
+                        perdidos: { type: integer, example: 1 }
+                        valor_ganho: { type: number, example: 9800 }
+                        valor_perdido: { type: number, example: 300 }
+                  por_responsavel:
+                    type: array
+                    description: Até 20 responsáveis, ordenados pelo valor fechado.
+                    items:
+                      type: object
+                      properties:
+                        id: { type: integer, nullable: true, description: Nulo para negócios sem responsável., example: 7 }
+                        nome: { type: string, example: Maria Souza }
+                        total: { type: integer, example: 12 }
+                        ganhos: { type: integer, example: 5 }
+                        perdidos: { type: integer, example: 1 }
+                        valor_fechado: { type: number, example: 30000 }
+                        taxa_conversao: { type: number, example: 83.3 }
+                  produtos_mais_vendidos:
+                    type: array
+                    items: { $ref: '#/components/schemas/ProdutoVendido' }
+                  produtos_menos_vendidos:
+                    type: array
+                    items: { $ref: '#/components/schemas/ProdutoVendido' }
+                  previsao_fechamento:
+                    type: object
+                    properties:
+                      atrasados: { $ref: '#/components/schemas/QtdValor' }
+                      meses:
+                        type: array
+                        items:
+                          allOf:
+                            - type: object
+                              properties:
+                                mes: { type: string, example: 2026-11 }
+                            - $ref: '#/components/schemas/QtdValor'
+                      sem_previsao: { $ref: '#/components/schemas/QtdValor' }
+        '401': { $ref: '#/components/responses/NaoAutorizado' }
+        '403': { $ref: '#/components/responses/Bloqueado' }
+        '404': { $ref: '#/components/responses/NaoEncontrado' }
+        '422': { $ref: '#/components/responses/ErroGenerico' }
+
+components:
+  securitySchemes:
+    bearerAuth:
+      type: http
+      scheme: bearer
+      description: Token gerado em Configurações > API.
+    tokenNaUrl:
+      type: apiKey
+      in: query
+      name: api_token
+      description: Alternativa para ferramentas que não permitem headers.
+
+  parameters:
+    Id:
+      name: id
+      in: path
+      required: true
+      schema: { type: integer }
+    Hash:
+      name: hash
+      in: path
+      required: true
+      schema: { type: string }
+      description: Hash do anúncio.
+    Page:
+      name: page
+      in: query
+      schema: { type: integer, minimum: 1, default: 1 }
+    PerPage:
+      name: per_page
+      in: query
+      schema: { type: integer, minimum: 1, default: 5 }
+    PipelineId:
+      name: pipeline_id
+      in: query
+      schema: { type: integer }
+      description: Sem este filtro, usa o pipeline padrão da empresa.
+    DataInicial:
+      name: data_inicial
+      in: query
+      schema: { type: string, format: date }
+    DataFinal:
+      name: data_final
+      in: query
+      schema: { type: string, format: date }
+    ResponsavelId:
+      name: responsavel_id
+      in: query
+      schema: { type: integer }
+      description: Filtra por usuário responsável.
+
+  responses:
+    NaoAutorizado:
+      description: Token ausente ou inválido.
+      content:
+        application/json:
+          schema: { $ref: '#/components/schemas/Erro' }
+          example: { success: false, error: Token de API inválido }
+    Bloqueado:
+      description: Assinatura bloqueada. Nos relatórios de metas e negócios, também indica Modo Negócios desativado, com `reason` igual a `modo_negocios_inativo`.
+      content:
+        application/json:
+          schema: { $ref: '#/components/schemas/Erro' }
+          example: { success: false, error: Assinatura expirada. Renove para continuar usando a API., reason: subscription_expired }
+    NaoEncontrado:
+      description: Registro não encontrado.
+      content:
+        application/json:
+          schema: { $ref: '#/components/schemas/Erro' }
+          example: { success: false, error: Registro não encontrado }
+    ErroGenerico:
+      description: Requisição inválida.
+      content:
+        application/json:
+          schema: { $ref: '#/components/schemas/Erro' }
+          example: { success: false, error: Dados inválidos }
+    ErroValidacao:
+      description: Um ou mais campos são inválidos.
+      content:
+        application/json:
+          schema:
+            type: object
+            properties:
+              success: { type: boolean, example: false }
+              errors:
+                type: object
+                additionalProperties: { type: string }
+                example: { titulo: Título é obrigatório. }
+
+  schemas:
+    Erro:
+      type: object
+      properties:
+        success: { type: boolean, example: false }
+        error: { type: string }
+        reason: { type: string, description: 'Motivo do bloqueio, quando houver.' }
+    Paginacao:
+      type: object
+      properties:
+        total: { type: integer, example: 1 }
+        page: { type: integer, example: 1 }
+        per_page: { type: integer, example: 5 }
+        has_more: { type: boolean, example: false }
+    AnuncioResumo:
+      type: object
+      properties:
+        id: { type: integer, example: 5 }
+        titulo: { type: string, example: Curso de Marketing }
+        hash: { type: string, nullable: true, example: abc123 }
+        cidade: { type: string, example: São Paulo }
+        estado: { type: string, example: SP }
+    AnuncioLista:
+      allOf:
+        - $ref: '#/components/schemas/AnuncioResumo'
+        - type: object
+          properties:
+            subtitulo: { type: string, nullable: true }
+            local: { type: string, nullable: true }
+            endereco: { type: string, nullable: true }
+            data_inicial: { type: string, nullable: true, example: '2026-02-01' }
+            data_final: { type: string, nullable: true, example: '2026-02-03' }
+            periodo: { type: string, nullable: true, example: 01/02/2026 a 03/02/2026 }
+            imagem: { type: string, nullable: true }
+            link_inscricao: { type: string, example: 'https://app.clixx.com.br/inscricao/abc123' }
+            webhook_url: { type: string, nullable: true }
+            pipeline_id: { type: integer, nullable: true }
+            etapa_inicial_id: { type: integer, nullable: true }
+            campos_personalizados:
+              type: array
+              items: { type: object }
+    AnuncioDetalhe:
+      allOf:
+        - $ref: '#/components/schemas/AnuncioResumo'
+        - type: object
+          properties:
+            subtitulo: { type: string, nullable: true }
+            descricao: { type: string, nullable: true }
+            mais_informacoes: { type: string, nullable: true }
+            local: { type: string, nullable: true }
+            endereco: { type: string, nullable: true }
+            data_inicial: { type: string, nullable: true, example: '2026-02-01' }
+            data_final: { type: string, nullable: true, example: '2026-02-03' }
+            periodo: { type: string, nullable: true, example: 01/02/2026 a 03/02/2026 }
+            imagem: { type: string, nullable: true }
+            link_inscricao: { type: string, example: 'https://app.clixx.com.br/inscricao/abc123' }
+            campos_extras:
+              type: array
+              items: { type: object }
+    LeadInscricao:
+      type: object
+      properties:
+        id: { type: integer, example: 123 }
+        nome: { type: string, example: João da Silva }
+        celular: { type: string, example: '11999999999' }
+        email: { type: string, nullable: true, example: joao@email.com }
+        cidade: { type: string, nullable: true, example: São Paulo }
+        estado: { type: string, nullable: true, example: SP }
+        status: { type: string, example: ativo }
+        tags: { type: string, nullable: true, example: 'vip,indicacao' }
+        temperatura: { type: string, nullable: true, example: quente }
+    NegocioEntrada:
+      type: object
+      properties:
+        titulo: { type: string, example: Plano Premium 12 meses }
+        valor: { type: number, example: 1500.00 }
+        pipeline_id: { type: integer, description: Padrão é o pipeline da empresa. }
+        etapa_id: { type: integer }
+        status: { type: string, enum: [aberto, ganho, perdido], default: aberto }
+        responsavel_id: { type: integer }
+        temperatura: { type: string, enum: [frio, morno, quente] }
+        prioridade: { type: string, enum: [baixa, normal, alta, urgente], default: normal }
+        origem: { type: string }
+        data_inicio: { type: string, format: date }
+        data_fechamento_prevista: { type: string, format: date }
+        motivo_perda: { type: string, description: Usado quando o status é `perdido`. }
+        produtos:
+          type: array
+          items: { type: integer }
+          description: IDs dos produtos.
+    Negocio:
+      type: object
+      properties:
+        id: { type: integer, example: 42 }
+        lead_id: { type: integer, example: 123 }
+        titulo: { type: string, example: Plano Premium 12 meses }
+        pipeline_id: { type: integer, example: 1 }
+        etapa_id: { type: integer, example: 3 }
+        status: { type: string, enum: [aberto, ganho, perdido] }
+        valor: { type: string, description: Valor em texto., example: '1500.00' }
+        responsavel_id: { type: integer, nullable: true, example: 5 }
+        temperatura: { type: string, nullable: true, example: quente }
+        prioridade: { type: string, example: alta }
+        origem: { type: string, nullable: true }
+        motivo_perda: { type: string, nullable: true }
+        data_inicio: { type: string, nullable: true, example: '2026-04-01' }
+        data_fechamento_prevista: { type: string, nullable: true, example: '2026-05-15' }
+        data_fechamento_real: { type: string, nullable: true }
+        etapa_changed_at: { type: string, nullable: true, example: '2026-04-10 14:30:00' }
+        created_at: { type: string, example: '2026-04-01 09:00:00' }
+        updated_at: { type: string, example: '2026-04-10 14:30:00' }
+    Proposta:
+      type: object
+      properties:
+        id: { type: integer, example: 18 }
+        lead_id: { type: integer, example: 123 }
+        oportunidade_id: { type: integer, nullable: true, example: 42 }
+        numero: { type: integer, example: 18 }
+        titulo: { type: string, example: Proposta - Plano Premium }
+        status: { type: string, example: enviada }
+        subtotal: { type: string, description: Valor em texto., example: '1500.00' }
+        desconto_valor: { type: string, description: Valor em texto., example: '0.00' }
+        total: { type: string, description: Valor em texto., example: '1500.00' }
+        data_inicial: { type: string, nullable: true, example: '2026-04-15' }
+        data_final: { type: string, nullable: true, example: '2026-05-30' }
+        created_at: { type: string, example: '2026-04-15 11:00:00' }
+    EstadoResposta:
+      type: object
+      properties:
+        success: { type: boolean, example: true }
+        state:
+          type: object
+          properties:
+            psid: { type: string, example: '1234567890' }
+            step: { type: string, example: celular }
+            anuncio_hash: { type: string, example: abc123 }
+            nome: { type: string, nullable: true, example: João da Silva }
+            celular: { type: string, nullable: true }
+            created_at: { type: string, example: '2026-01-20 10:00:00' }
+            updated_at: { type: string, example: '2026-01-20 10:01:00' }
+    MetaValores:
+      type: object
+      properties:
+        meta: { type: number, example: 10000 }
+        realizado: { type: number, example: 8500 }
+        percentual: { type: integer, nullable: true, example: 85 }
+    MetaMes:
+      allOf:
+        - type: object
+          properties:
+            mes: { type: integer, minimum: 1, maximum: 12, example: 1 }
+        - $ref: '#/components/schemas/MetaValores'
+    PipelineResumo:
+      type: object
+      properties:
+        id: { type: integer, example: 3 }
+        nome: { type: string, example: Pipeline Principal }
+    Filtros:
+      type: object
+      properties:
+        data_inicial: { type: string, nullable: true, example: '2026-01-01' }
+        data_final: { type: string, nullable: true, example: '2026-10-30' }
+        responsavel_id: { type: integer, nullable: true }
+    ProdutoVendido:
+      type: object
+      properties:
+        id: { type: integer, example: 4 }
+        nome: { type: string, example: Plano Premium }
+        vezes: { type: integer, example: 6 }
+        valor_total: { type: number, example: 18000 }
+    QtdValor:
+      type: object
+      properties:
+        qtd: { type: integer, example: 5 }
+        valor: { type: number, example: 2500 }
