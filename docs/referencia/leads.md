@@ -6,7 +6,7 @@ Consulta de leads e movimentação no pipeline. Atualizar um lead dispara as reg
 
 `GET https://app.clixx.com.br/api/webhook/leads/{id}`
 
-Retorna o lead com pipeline, etapa e anúncio. Para buscar pelo telefone, use `id` igual a `0` e informe `celular`. O `lead_id` também aparece em Listar negócios e em Listar inscrições.
+Retorna o lead com pipeline, etapa e formulário. Para buscar pelo telefone, use `id` igual a `0` e informe `celular`. O `lead_id` também aparece em Listar negócios e em Listar inscrições.
 
 ### Parâmetros
 

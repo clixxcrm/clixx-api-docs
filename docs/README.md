@@ -14,7 +14,7 @@ Todas as respostas são em JSON.
 
 | Recurso | Para quê |
 | --- | --- |
-| [Anúncios](referencia/anuncios.md) | Listar anúncios ativos e gerar links de WhatsApp |
+| [Formulários](referencia/formularios.md) | Listar formulários ativos e gerar links de WhatsApp |
 | [Inscrições](referencia/inscricoes.md) | Criar, consultar e atualizar inscrições |
 | [Leads](referencia/leads.md) | Consultar leads e movê-los no pipeline |
 | [Negócios](referencia/negocios.md) e [propostas](referencia/propostas.md) | Gerenciar oportunidades de cada lead |
@@ -27,7 +27,7 @@ Todas as respostas são em JSON.
 2. Faça sua primeira chamada:
 
 ```bash
-curl https://app.clixx.com.br/api/anuncios \
+curl https://app.clixx.com.br/api/form \
   -H "Authorization: Bearer SEU_TOKEN"
 ```
 
@@ -38,6 +38,6 @@ curl https://app.clixx.com.br/api/anuncios \
 | ID do negócio | [Listar negócios](referencia/negocios.md) |
 | ID do lead | [Listar negócios](referencia/negocios.md), [Listar inscrições](referencia/inscricoes.md) ou [Buscar lead](referencia/leads.md) pelo celular |
 | ID da inscrição | [Listar inscrições](referencia/inscricoes.md) |
-| Hash do anúncio | [Listar anúncios](referencia/anuncios.md) |
+| Hash do formulário | [Listar formulários](referencia/formularios.md) |
 
 Veja também [Autenticação](guias/autenticacao.md) e [Erros e limites](guias/erros-e-limites.md).

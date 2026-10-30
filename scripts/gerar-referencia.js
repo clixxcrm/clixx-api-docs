@@ -9,7 +9,7 @@ const spec = yaml.load(fs.readFileSync(path.join(raiz, 'openapi.yaml'), 'utf8'))
 const baseUrl = spec.servers[0].url;
 const metodos = ['get', 'post', 'put', 'delete'];
 const paginas = {
-  'Anúncios': 'anuncios', 'Inscrições': 'inscricoes', 'Leads': 'leads', 'Negócios': 'negocios',
+  'Formulários': 'formularios', 'Inscrições': 'inscricoes', 'Leads': 'leads', 'Negócios': 'negocios',
   'Propostas': 'propostas', 'Messenger': 'messenger', 'Relatórios': 'relatorios',
 };
 const exemplosCaminho = { id: '123', hash: 'abc123', psid: '1234567890' };

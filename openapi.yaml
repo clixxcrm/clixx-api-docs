@@ -9,8 +9,8 @@ security:
   - bearerAuth: []
   - tokenNaUrl: []
 tags:
-  - name: Anúncios
-    description: Anúncios ativos e links de WhatsApp.
+  - name: Formulários
+    description: Formulários de captação ativos e links de WhatsApp. As rotas antigas `/anuncios` e `/anuncios/{hash}` continuam funcionando com a mesma resposta. Os campos mantêm o nome `anuncios`, `anuncio_id` e `anuncio_hash`.
   - name: Inscrições
     description: Criação e consulta de inscrições.
   - name: Leads
@@ -25,15 +25,15 @@ tags:
     description: Dados das telas de relatórios do painel, somente para leitura.
 
 paths:
-  /anuncios:
+  /form:
     get:
-      tags: [Anúncios]
+      tags: [Formulários]
       operationId: listarAnuncios
-      summary: Listar anúncios
-      description: Retorna os anúncios ativos da empresa.
+      summary: Listar formulários
+      description: Retorna os formulários ativos da empresa.
       responses:
         '200':
-          description: Anúncios encontrados.
+          description: Formulários encontrados.
           content:
             application/json:
               schema:
@@ -47,17 +47,17 @@ paths:
         '401': { $ref: '#/components/responses/NaoAutorizado' }
         '403': { $ref: '#/components/responses/Bloqueado' }
 
-  /anuncios/{hash}:
+  /form/{hash}:
     get:
-      tags: [Anúncios]
+      tags: [Formulários]
       operationId: detalharAnuncio
-      summary: Detalhar anúncio
-      description: Retorna os detalhes de um anúncio, com seus campos extras.
+      summary: Detalhar formulário
+      description: Retorna os detalhes de um formulário, com seus campos extras.
       parameters:
         - $ref: '#/components/parameters/Hash'
       responses:
         '200':
-          description: Anúncio encontrado.
+          description: Formulário encontrado.
           content:
             application/json:
               schema:
@@ -71,10 +71,10 @@ paths:
 
   /whatsapp/link/{hash}:
     get:
-      tags: [Anúncios]
+      tags: [Formulários]
       operationId: gerarLinkWhatsapp
       summary: Gerar link de WhatsApp
-      description: Retorna o link do formulário e o link de WhatsApp de um anúncio. O campo `whatsapp` vem nulo quando não há número configurado.
+      description: Retorna o link de inscrição e o link de WhatsApp de um formulário. O campo `whatsapp` vem nulo quando não há número configurado.
       parameters:
         - $ref: '#/components/parameters/Hash'
       responses:
@@ -111,9 +111,9 @@ paths:
         - titulo: Inscrição com campos personalizados
           corpo: { anuncio_hash: abc123, nome: João da Silva, celular: '11999999999', origem: messenger, psid: '1234567890123456', 5_email_comercial: email@exemplo.com, 12_cpf: '12345678900' }
       description: |
-        Cria uma inscrição em um anúncio.
+        Cria uma inscrição em um formulário.
 
-        Campos personalizados do anúncio são enviados no formato `{id}_{slug}`, por exemplo `5_nome_completo`.
+        Campos personalizados do formulário são enviados no formato `{id}_{slug}`, por exemplo `5_nome_completo`.
       requestBody:
         required: true
         content:
@@ -122,7 +122,7 @@ paths:
               type: object
               required: [anuncio_hash, nome, celular]
               properties:
-                anuncio_hash: { type: string, description: Hash do anúncio., example: abc123 }
+                anuncio_hash: { type: string, description: Hash do formulário., example: abc123 }
                 nome: { type: string, minLength: 3, description: Nome completo., example: João da Silva }
                 celular: { type: string, description: Celular com no mínimo 10 dígitos., example: '11999999999' }
                 origem: { type: string, description: Origem da inscrição. Padrão `facebook`., example: messenger }
@@ -160,7 +160,7 @@ paths:
         '403': { $ref: '#/components/responses/Bloqueado' }
         '404': { $ref: '#/components/responses/NaoEncontrado' }
         '409':
-          description: Lead já inscrito neste anúncio.
+          description: Lead já inscrito neste formulário.
           content:
             application/json:
               schema: { $ref: '#/components/schemas/Erro' }
@@ -174,13 +174,13 @@ paths:
       x-exemplos:
         - titulo: Verificar se um lead já está inscrito
           caminho: /inscricoes?celular=11999999999
-        - titulo: Listar as inscrições de um anúncio
+        - titulo: Listar as inscrições de um formulário
           caminho: /inscricoes?anuncio_hash=abc123
       description: Lista inscrições com filtros e paginação. Use `celular` para verificar se um lead já está inscrito.
       parameters:
         - { name: celular, in: query, schema: { type: string }, description: Busca por celular. }
-        - { name: anuncio_hash, in: query, schema: { type: string }, description: Filtra pelo hash do anúncio. }
-        - { name: anuncio_id, in: query, schema: { type: integer }, description: Filtra pelo ID do anúncio. }
+        - { name: anuncio_hash, in: query, schema: { type: string }, description: Filtra pelo hash do formulário. }
+        - { name: anuncio_id, in: query, schema: { type: integer }, description: Filtra pelo ID do formulário. }
         - { name: status, in: query, schema: { type: string, enum: [pendente, confirmado, cancelado] } }
         - { name: busca, in: query, schema: { type: string }, description: Busca por nome ou telefone. }
         - { name: data_inicial, in: query, schema: { type: string, format: date } }
@@ -223,7 +223,7 @@ paths:
       tags: [Inscrições]
       operationId: detalharInscricao
       summary: Detalhar inscrição
-      description: Retorna a inscrição, o lead, o anúncio e os campos personalizados.
+      description: Retorna a inscrição, o lead, o formulário e os campos personalizados.
       responses:
         '200':
           description: Inscrição encontrada.
@@ -318,7 +318,7 @@ paths:
       tags: [Leads]
       operationId: buscarLead
       summary: Buscar lead
-      description: Retorna o lead com pipeline, etapa e anúncio. Para buscar pelo telefone, use `id` igual a `0` e informe `celular`. O `lead_id` também aparece em Listar negócios e em Listar inscrições.
+      description: Retorna o lead com pipeline, etapa e formulário. Para buscar pelo telefone, use `id` igual a `0` e informe `celular`. O `lead_id` também aparece em Listar negócios e em Listar inscrições.
       parameters:
         - { name: celular, in: query, schema: { type: string }, description: Celular do lead. }
       responses:
@@ -995,7 +995,7 @@ components:
       in: path
       required: true
       schema: { type: string }
-      description: Hash do anúncio.
+      description: Hash do formulário.
     Page:
       name: page
       in: query

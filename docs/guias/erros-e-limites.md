@@ -10,7 +10,7 @@
 | `401` | Token ausente ou inválido |
 | `403` | Assinatura bloqueada ou Modo Negócios desativado |
 | `404` | Registro não encontrado |
-| `409` | Lead já inscrito no anúncio |
+| `409` | Lead já inscrito no formulário |
 | `422` | Dados ou filtros inválidos |
 | `500` | Erro interno |
 
@@ -38,7 +38,7 @@ Nos erros de validação de inscrições e negócios, `errors` traz um item para
 
 ## Limite de requisições
 
-Os endpoints `/v1/`, `/anuncios` e `/inscricoes` aceitam até 60 requisições por minuto por IP. Acima disso, a resposta pode ser um bloqueio em vez de JSON, então espere um pouco antes de tentar de novo.
+Os endpoints `/v1/`, `/form` e `/inscricoes` aceitam até 60 requisições por minuto por IP. Acima disso, a resposta pode ser um bloqueio em vez de JSON, então espere um pouco antes de tentar de novo.
 
 ## CORS
 

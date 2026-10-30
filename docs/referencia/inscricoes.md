@@ -6,15 +6,15 @@ Criação e consulta de inscrições.
 
 `POST https://app.clixx.com.br/api/inscricao`
 
-Cria uma inscrição em um anúncio.
+Cria uma inscrição em um formulário.
 
-Campos personalizados do anúncio são enviados no formato `{id}_{slug}`, por exemplo `5_nome_completo`.
+Campos personalizados do formulário são enviados no formato `{id}_{slug}`, por exemplo `5_nome_completo`.
 
 ### Corpo da requisição
 
 | Campo | Tipo | Obrigatório | Descrição |
 | --- | --- | --- | --- |
-| `anuncio_hash` | string | Sim | Hash do anúncio. |
+| `anuncio_hash` | string | Sim | Hash do formulário. |
 | `nome` | string | Sim | Nome completo. |
 | `celular` | string | Sim | Celular com no mínimo 10 dígitos. |
 | `origem` | string | Não | Origem da inscrição. Padrão `facebook`. |
@@ -81,7 +81,7 @@ curl -X POST "https://app.clixx.com.br/api/inscricao" \
 | `401` | Token ausente ou inválido. |
 | `403` | Assinatura bloqueada. Nos relatórios de metas e negócios, também indica Modo Negócios desativado, com `reason` igual a `modo_negocios_inativo`. |
 | `404` | Registro não encontrado. |
-| `409` | Lead já inscrito neste anúncio. |
+| `409` | Lead já inscrito neste formulário. |
 | `422` | Um ou mais campos são inválidos. |
 
 ## Listar inscrições
@@ -95,8 +95,8 @@ Lista inscrições com filtros e paginação. Use `celular` para verificar se um
 | Nome | Onde | Tipo | Obrigatório | Descrição |
 | --- | --- | --- | --- | --- |
 | `celular` | Query | string | Não | Busca por celular. |
-| `anuncio_hash` | Query | string | Não | Filtra pelo hash do anúncio. |
-| `anuncio_id` | Query | integer | Não | Filtra pelo ID do anúncio. |
+| `anuncio_hash` | Query | string | Não | Filtra pelo hash do formulário. |
+| `anuncio_id` | Query | integer | Não | Filtra pelo ID do formulário. |
 | `status` | Query | string | Não | Valores: `pendente`, `confirmado`, `cancelado`. |
 | `busca` | Query | string | Não | Busca por nome ou telefone. |
 | `data_inicial` | Query | date | Não | - |
@@ -118,7 +118,7 @@ curl -X GET "https://app.clixx.com.br/api/inscricoes?celular=11999999999" \
   -H "Authorization: Bearer SEU_TOKEN"
 ```
 
-**Listar as inscrições de um anúncio**
+**Listar as inscrições de um formulário**
 
 ```bash
 curl -X GET "https://app.clixx.com.br/api/inscricoes?anuncio_hash=abc123" \
@@ -176,7 +176,7 @@ curl -X GET "https://app.clixx.com.br/api/inscricoes?anuncio_hash=abc123" \
 
 `GET https://app.clixx.com.br/api/inscricoes/{id}`
 
-Retorna a inscrição, o lead, o anúncio e os campos personalizados.
+Retorna a inscrição, o lead, o formulário e os campos personalizados.
 
 ### Parâmetros
 

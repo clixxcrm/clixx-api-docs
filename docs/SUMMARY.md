@@ -9,7 +9,7 @@
 
 ## Referência da API
 
-* [Anúncios](referencia/anuncios.md)
+* [Formulários](referencia/formularios.md)
 * [Inscrições](referencia/inscricoes.md)
 * [Leads](referencia/leads.md)
 * [Negócios](referencia/negocios.md)

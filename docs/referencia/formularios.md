@@ -1,17 +1,17 @@
-# Anúncios
+# Formulários
 
-Anúncios ativos e links de WhatsApp.
+Formulários de captação ativos e links de WhatsApp. As rotas antigas `/anuncios` e `/anuncios/{hash}` continuam funcionando com a mesma resposta. Os campos mantêm o nome `anuncios`, `anuncio_id` e `anuncio_hash`.
 
-## Listar anúncios
+## Listar formulários
 
-`GET https://app.clixx.com.br/api/anuncios`
+`GET https://app.clixx.com.br/api/form`
 
-Retorna os anúncios ativos da empresa.
+Retorna os formulários ativos da empresa.
 
 ### Exemplo
 
 ```bash
-curl -X GET "https://app.clixx.com.br/api/anuncios" \
+curl -X GET "https://app.clixx.com.br/api/form" \
   -H "Authorization: Bearer SEU_TOKEN"
 ```
 
@@ -54,22 +54,22 @@ curl -X GET "https://app.clixx.com.br/api/anuncios" \
 | `401` | Token ausente ou inválido. |
 | `403` | Assinatura bloqueada. Nos relatórios de metas e negócios, também indica Modo Negócios desativado, com `reason` igual a `modo_negocios_inativo`. |
 
-## Detalhar anúncio
+## Detalhar formulário
 
-`GET https://app.clixx.com.br/api/anuncios/{hash}`
+`GET https://app.clixx.com.br/api/form/{hash}`
 
-Retorna os detalhes de um anúncio, com seus campos extras.
+Retorna os detalhes de um formulário, com seus campos extras.
 
 ### Parâmetros
 
 | Nome | Onde | Tipo | Obrigatório | Descrição |
 | --- | --- | --- | --- | --- |
-| `hash` | URL | string | Sim | Hash do anúncio. |
+| `hash` | URL | string | Sim | Hash do formulário. |
 
 ### Exemplo
 
 ```bash
-curl -X GET "https://app.clixx.com.br/api/anuncios/abc123" \
+curl -X GET "https://app.clixx.com.br/api/form/abc123" \
   -H "Authorization: Bearer SEU_TOKEN"
 ```
 
@@ -113,13 +113,13 @@ curl -X GET "https://app.clixx.com.br/api/anuncios/abc123" \
 
 `GET https://app.clixx.com.br/api/whatsapp/link/{hash}`
 
-Retorna o link do formulário e o link de WhatsApp de um anúncio. O campo `whatsapp` vem nulo quando não há número configurado.
+Retorna o link de inscrição e o link de WhatsApp de um formulário. O campo `whatsapp` vem nulo quando não há número configurado.
 
 ### Parâmetros
 
 | Nome | Onde | Tipo | Obrigatório | Descrição |
 | --- | --- | --- | --- | --- |
-| `hash` | URL | string | Sim | Hash do anúncio. |
+| `hash` | URL | string | Sim | Hash do formulário. |
 
 ### Exemplo
 
