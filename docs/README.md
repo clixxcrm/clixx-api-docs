@@ -10,6 +10,10 @@ https://app.clixx.com.br/api
 
 Todas as respostas são em JSON.
 
+{% hint style="info" %}
+Para **enviar mensagens de WhatsApp** a partir do seu sistema, use a [API-Service](api-service/README.md). Ela tem URL e token próprios, gerados em **Configurações > API-Service**.
+{% endhint %}
+
 ## O que você pode fazer
 
 | Recurso | Para quê |

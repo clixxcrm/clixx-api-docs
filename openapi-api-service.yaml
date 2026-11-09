@@ -1,0 +1,513 @@
+openapi: 3.0.3
+info:
+  title: API-Service do Clixx CRM
+  version: 1.0.0
+  description: >-
+    Envio de mensagens de WhatsApp por um canal conectado ao Clixx (API Oficial, Evolution ou UazapiGO).
+    Cada API é criada em Configurações > API-Service, fica ligada a um canal e tem URL e token próprios.
+servers:
+  - url: https://app.clixx.com.br/api-service/external/{apiId}
+    description: URL de integração mostrada no card da API.
+    variables:
+      apiId:
+        default: SEU_API_ID
+        description: ID público da API, parte final da URL de integração.
+security:
+  - bearerAuth: []
+tags:
+  - name: Mensagens
+    description: >-
+      Envio de texto, arquivo, áudio e localização pelo canal da API. Cada envio abre o ticket do contato
+      em Atendimentos, ou reutiliza o que já existe, e a mensagem aparece no chat como enviada.
+  - name: Templates
+    description: >-
+      Templates aprovados na Meta. Só funcionam em APIs ligadas a um canal da API Oficial. As outras
+      respondem `400`.
+  - name: Status da mensagem
+    description: Status de entrega das mensagens enviadas pela API.
+
+paths:
+  /:
+    post:
+      tags: [Mensagens]
+      operationId: enviarTexto
+      summary: Enviar texto
+      description: >-
+        Envia uma mensagem de texto. Na API Oficial, só funciona com a janela de 24 horas do contato aberta;
+        fora dela, use [Enviar template](templates.md). A mesma rota também envia arquivos, veja abaixo.
+      x-titulo-form: Enviar arquivo nesta mesma rota (form-data)
+      x-descricao-form: >-
+        Se a requisição vier em `multipart/form-data` com um arquivo no campo `media`, a rota envia o arquivo
+        em vez de texto. O tipo (imagem, vídeo, áudio ou documento) é definido pelo tipo do arquivo.
+      x-exemplos:
+        - titulo: Com chave contra envio duplicado, ticket na aba Pendentes e na fila 3
+          corpo:
+            body: Seu pedido saiu para entrega.
+            number: '5511999999999'
+            externalKey: pedido-1234-saiu
+            isClosed: pending
+            filaId: 3
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              allOf:
+                - type: object
+                  required: [body, number]
+                  properties:
+                    body: { type: string, description: Texto da mensagem., example: Seu pedido saiu para entrega. }
+                    number: { $ref: '#/components/schemas/Numero' }
+                - $ref: '#/components/schemas/OpcoesTicket'
+          multipart/form-data:
+            schema:
+              allOf:
+                - type: object
+                  required: [media, number]
+                  properties:
+                    media: { type: string, format: binary, description: Arquivo a enviar., example: /caminho/comprovante.pdf }
+                    number: { $ref: '#/components/schemas/Numero' }
+                    body: { type: string, description: Legenda do arquivo., example: Segue o comprovante. }
+                - $ref: '#/components/schemas/OpcoesTicket'
+      responses:
+        '200': { $ref: '#/components/responses/Enviado' }
+        '400': { $ref: '#/components/responses/ErroEnvio' }
+        '401': { $ref: '#/components/responses/NaoAutorizado' }
+        '403': { $ref: '#/components/responses/Bloqueado' }
+        '404': { $ref: '#/components/responses/ApiNaoEncontrada' }
+        '409': { $ref: '#/components/responses/Duplicada' }
+
+  /params:
+    get:
+      tags: [Mensagens]
+      operationId: enviarTextoPelaUrl
+      summary: Enviar texto pela URL
+      description: >-
+        Mesmo envio de [Enviar texto](#enviar-texto), com tudo na URL. Serve para ferramentas que só fazem
+        chamadas GET. Aqui o token também pode ir no parâmetro `token`, no lugar do header. Lembre de codificar
+        o texto na URL (espaço vira `%20`).
+      x-query-no-exemplo: true
+      parameters:
+        - { name: body, in: query, required: true, schema: { type: string }, description: Texto da mensagem., example: Seu pedido saiu para entrega. }
+        - { name: number, in: query, required: true, schema: { type: string }, description: Número do destinatário com DDD., example: '5511999999999' }
+        - { name: externalKey, in: query, schema: { type: string }, description: 'Chave única da mensagem. Veja `externalKey` em [Enviar texto](#enviar-texto).' }
+        - { name: isClosed, in: query, schema: { type: string }, description: 'Aba do ticket: `false` = Abertos, `pending` = Pendentes, `true` = Fechados.' }
+        - { name: filaId, in: query, schema: { type: integer }, description: ID da fila de atendimento. }
+        - { name: userId, in: query, schema: { type: integer }, description: ID do usuário responsável. }
+        - { name: token, in: query, schema: { type: string }, description: Token da API. Substitui o header `Authorization`. }
+      x-exemplos:
+        - titulo: Com o token na URL, sem header
+          caminho: /params?number=5511999999999&body=Seu%20pedido%20saiu%20para%20entrega.&token=SEU_TOKEN
+          semToken: true
+      responses:
+        '200': { $ref: '#/components/responses/Enviado' }
+        '400': { $ref: '#/components/responses/ErroEnvio' }
+        '401': { $ref: '#/components/responses/NaoAutorizado' }
+        '403': { $ref: '#/components/responses/Bloqueado' }
+        '404': { $ref: '#/components/responses/ApiNaoEncontrada' }
+        '409': { $ref: '#/components/responses/Duplicada' }
+
+  /url:
+    post:
+      tags: [Mensagens]
+      operationId: enviarMidiaPorUrl
+      summary: Enviar arquivo por URL
+      description: >-
+        Baixa o arquivo de uma URL pública e envia. O tipo vem do `Content-Type` que o servidor do arquivo
+        informa: `image/*` vira imagem, `video/*` vira vídeo, `audio/*` vira áudio e o resto vai como documento.
+        Limite de 64 MB.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              allOf:
+                - type: object
+                  required: [mediaUrl, number]
+                  properties:
+                    mediaUrl: { type: string, description: 'URL pública do arquivo (http ou https).', example: 'https://exemplo.com/catalogo.pdf' }
+                    number: { $ref: '#/components/schemas/Numero' }
+                    body: { type: string, description: Legenda do arquivo., example: Segue o catálogo. }
+                - $ref: '#/components/schemas/OpcoesTicket'
+      responses:
+        '200': { $ref: '#/components/responses/Enviado' }
+        '400': { $ref: '#/components/responses/ErroEnvio' }
+        '401': { $ref: '#/components/responses/NaoAutorizado' }
+        '403': { $ref: '#/components/responses/Bloqueado' }
+        '404': { $ref: '#/components/responses/ApiNaoEncontrada' }
+        '409': { $ref: '#/components/responses/Duplicada' }
+
+  /voice:
+    post:
+      tags: [Mensagens]
+      operationId: enviarAudio
+      summary: Enviar áudio
+      description: >-
+        Baixa um áudio de uma URL pública e envia como mensagem de voz. Use `.ogg` (Opus) ou `.mp3`.
+        Limite de 64 MB.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              allOf:
+                - type: object
+                  required: [audio, number]
+                  properties:
+                    audio: { type: string, description: 'URL pública do áudio (http ou https).', example: 'https://exemplo.com/recado.ogg' }
+                    number: { $ref: '#/components/schemas/Numero' }
+                - $ref: '#/components/schemas/OpcoesTicket'
+      responses:
+        '200': { $ref: '#/components/responses/Enviado' }
+        '400': { $ref: '#/components/responses/ErroEnvio' }
+        '401': { $ref: '#/components/responses/NaoAutorizado' }
+        '403': { $ref: '#/components/responses/Bloqueado' }
+        '404': { $ref: '#/components/responses/ApiNaoEncontrada' }
+        '409': { $ref: '#/components/responses/Duplicada' }
+
+  /base64:
+    post:
+      tags: [Mensagens]
+      operationId: enviarBase64
+      summary: Enviar arquivo em Base64
+      description: >-
+        Envia um arquivo codificado em Base64. O `mimeType` define se ele vai como imagem, vídeo, áudio ou
+        documento. Limite de 64 MB depois de decodificado.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              allOf:
+                - type: object
+                  required: [base64Data, number, mimeType]
+                  properties:
+                    base64Data: { type: string, description: 'Conteúdo do arquivo em Base64. Também aceita data URI (`data:image/png;base64,...`).', example: iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNkYPhfDwAChwGA60e6kgAAAABJRU5ErkJggg== }
+                    number: { $ref: '#/components/schemas/Numero' }
+                    mimeType: { type: string, description: Tipo do arquivo., example: image/png }
+                    fileName: { type: string, description: Nome do arquivo exibido no WhatsApp., example: etiqueta.png }
+                    body: { type: string, description: Legenda do arquivo. }
+                - $ref: '#/components/schemas/OpcoesTicket'
+      responses:
+        '200': { $ref: '#/components/responses/Enviado' }
+        '400': { $ref: '#/components/responses/ErroEnvio' }
+        '401': { $ref: '#/components/responses/NaoAutorizado' }
+        '403': { $ref: '#/components/responses/Bloqueado' }
+        '404': { $ref: '#/components/responses/ApiNaoEncontrada' }
+        '409': { $ref: '#/components/responses/Duplicada' }
+
+  /location:
+    post:
+      tags: [Mensagens]
+      operationId: enviarLocalizacao
+      summary: Enviar localização
+      description: >-
+        Envia um pin no mapa. Funciona em APIs da API Oficial e da UazapiGO; nas da Evolution responde `400`.
+        Na API Oficial vale a janela de 24 horas, como no texto.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              allOf:
+                - type: object
+                  required: [number, latitude, longitude]
+                  properties:
+                    number: { $ref: '#/components/schemas/Numero' }
+                    latitude: { type: number, description: 'Latitude em graus decimais. Aceita ponto ou vírgula.', minimum: -90, maximum: 90, example: -23.5613 }
+                    longitude: { type: number, description: 'Longitude em graus decimais. Aceita ponto ou vírgula.', minimum: -180, maximum: 180, example: -46.6565 }
+                    name: { type: string, description: 'Nome do local, exibido acima do mapa.', example: Loja Paulista }
+                    address: { type: string, description: 'Endereço do local, exibido abaixo do nome.', example: 'Av. Paulista, 1000 - São Paulo/SP' }
+                - $ref: '#/components/schemas/OpcoesTicket'
+      responses:
+        '200': { $ref: '#/components/responses/Enviado' }
+        '400': { $ref: '#/components/responses/ErroEnvio' }
+        '401': { $ref: '#/components/responses/NaoAutorizado' }
+        '403': { $ref: '#/components/responses/Bloqueado' }
+        '404': { $ref: '#/components/responses/ApiNaoEncontrada' }
+        '409': { $ref: '#/components/responses/Duplicada' }
+
+  /template:
+    post:
+      tags: [Templates]
+      operationId: enviarTemplate
+      summary: Enviar template
+      description: >-
+        Envia um template aprovado na Meta. Funciona fora da janela de 24 horas, então é a forma de iniciar
+        uma conversa ou retomar um contato parado. Use [Listar templates](#listar-templates) para ver os nomes,
+        os idiomas e quantas variáveis cada um tem.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              allOf:
+                - type: object
+                  required: [number, template]
+                  properties:
+                    number: { $ref: '#/components/schemas/Numero' }
+                    template: { type: string, description: Nome exato do template aprovado., example: confirmacao_pedido }
+                    language: { type: string, description: Código de idioma do template., default: pt_BR }
+                    params:
+                      type: array
+                      items: { type: string }
+                      description: 'Variáveis do corpo, na ordem `{{1}}`, `{{2}}`...'
+                      example: [João, '1234']
+                    headerImageUrl: { type: string, description: 'URL https pública da imagem, para template com cabeçalho de imagem.' }
+                    headerDocumentUrl: { type: string, description: 'URL https pública do PDF, para template com cabeçalho de documento. Não use junto com `headerImageUrl`.' }
+                    headerDocumentFilename: { type: string, description: Nome do arquivo exibido no documento. }
+                    couponCode: { type: string, description: 'Código PIX copia e cola, para template com botão de copiar código. Obrigatório nesse tipo de template.' }
+                    buttons:
+                      type: array
+                      items: { type: object }
+                      description: 'Parte variável de botão de URL dinâmica, no formato `[{"index": 0, "value": "..."}]`. `index` é a posição do botão, começando em 0.'
+                    flowId: { type: integer, description: 'ID de um fluxo do FlowBuilder. Quando o contato clicar num botão deste template, o fluxo começa. O fluxo precisa estar ativo e ter um gatilho de template com os mesmos botões. O ID aparece no card do fluxo.' }
+                    canalId: { type: integer, description: 'ID de outro número da API Oficial da empresa. Vazio = número da própria API.' }
+                - $ref: '#/components/schemas/OpcoesTicket'
+      x-exemplos:
+        - titulo: Template com cabeçalho de documento (PDF)
+          corpo:
+            number: '5511999999999'
+            template: envio_boleto
+            params: [João, 'R$ 150,00']
+            headerDocumentUrl: https://exemplo.com/boleto-1234.pdf
+            headerDocumentFilename: boleto-1234.pdf
+        - titulo: Template que começa um fluxo do FlowBuilder quando o contato clica num botão
+          corpo:
+            number: '5511999999999'
+            template: pesquisa_satisfacao
+            flowId: 42
+      responses:
+        '200': { $ref: '#/components/responses/Enviado' }
+        '400':
+          description: >-
+            Campo obrigatório faltando, número inválido, API fora do canal API Oficial, template inexistente ou
+            não aprovado, variáveis em número diferente do template, `couponCode` faltando, `flowId` inválido ou
+            inativo, ou recusa da Meta. O motivo vem em `error`.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Erro' }
+        '401': { $ref: '#/components/responses/NaoAutorizado' }
+        '403': { $ref: '#/components/responses/Bloqueado' }
+        '404': { $ref: '#/components/responses/ApiNaoEncontrada' }
+        '409': { $ref: '#/components/responses/Duplicada' }
+
+  /templates:
+    get:
+      tags: [Templates]
+      operationId: listarTemplates
+      summary: Listar templates
+      description: Lista os templates da conta do WhatsApp na Meta, com status, categoria e os textos de cada parte.
+      parameters:
+        - { name: canalId, in: query, schema: { type: integer }, description: 'ID de outro número da API Oficial da empresa. Vazio = número da própria API.' }
+      responses:
+        '200':
+          description: Templates encontrados.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success: { type: boolean, example: true }
+                  templates:
+                    type: array
+                    items: { $ref: '#/components/schemas/Template' }
+        '400':
+          description: A API não é do canal API Oficial, ou o número não tem o ID da conta do WhatsApp (WABA) configurado.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Erro' }
+        '401': { $ref: '#/components/responses/NaoAutorizado' }
+        '403': { $ref: '#/components/responses/Bloqueado' }
+        '404': { $ref: '#/components/responses/ApiNaoEncontrada' }
+        '502': { $ref: '#/components/responses/FalhaMeta' }
+
+  /getMessageByMessageId:
+    get:
+      tags: [Status da mensagem]
+      operationId: buscarMensagem
+      summary: Consultar status da mensagem
+      description: >-
+        Busca uma mensagem pelo `messageId` devolvido no envio. A Meta pode aceitar a mensagem e recusar a
+        entrega depois; por isso, confira o `status` alguns segundos após enviar. Em falha, o motivo vem em `error`.
+      x-query-no-exemplo: true
+      parameters:
+        - { name: messageId, in: query, required: true, schema: { type: string }, description: 'ID devolvido no envio (`messageId`).', example: wamid.HBgNNTUxMTk5OTk5OTk5ORUCABEYEjQ1Q0E4 }
+      responses:
+        '200':
+          description: Mensagem encontrada.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success: { type: boolean, example: true }
+                  message: { $ref: '#/components/schemas/MensagemStatus' }
+        '400':
+          description: '`messageId` não informado.'
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Erro' }
+        '401': { $ref: '#/components/responses/NaoAutorizado' }
+        '403': { $ref: '#/components/responses/Bloqueado' }
+        '404':
+          description: API não encontrada ou desativada, ou mensagem não encontrada.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Erro' }
+
+components:
+  securitySchemes:
+    bearerAuth:
+      type: http
+      scheme: bearer
+      description: Token gerado ao criar a API em Configurações > API-Service. Começa com `clx_`.
+    tokenNaUrl:
+      type: apiKey
+      in: query
+      name: token
+      description: Alternativa ao header, só para `GET /params`.
+
+  responses:
+    Enviado:
+      description: Mensagem enviada.
+      content:
+        application/json:
+          schema: { $ref: '#/components/schemas/Envio' }
+    ErroEnvio:
+      description: >-
+        Campo obrigatório faltando, número inválido, tipo de mensagem que o canal da API não aceita, janela de
+        24 horas fechada (API Oficial) ou falha no envio. O motivo vem em `error`.
+      content:
+        application/json:
+          schema: { $ref: '#/components/schemas/Erro' }
+    NaoAutorizado:
+      description: Token ausente ou inválido.
+      content:
+        application/json:
+          schema: { $ref: '#/components/schemas/Erro' }
+    Bloqueado:
+      description: Assinatura da empresa inativa. A integração volta a funcionar sozinha quando a assinatura é reativada.
+      content:
+        application/json:
+          schema: { $ref: '#/components/schemas/Erro' }
+    ApiNaoEncontrada:
+      description: API não encontrada ou desativada no painel.
+      content:
+        application/json:
+          schema: { $ref: '#/components/schemas/Erro' }
+    Duplicada:
+      description: A `externalKey` já foi usada nesta API. A mensagem não foi reenviada.
+      content:
+        application/json:
+          schema: { $ref: '#/components/schemas/Duplicada' }
+    FalhaMeta:
+      description: A Meta não respondeu à listagem de templates.
+      content:
+        application/json:
+          schema: { $ref: '#/components/schemas/Erro' }
+
+  schemas:
+    Numero:
+      type: string
+      description: >-
+        Número do destinatário com DDD. Sem código de país, vale o Brasil (55); para outro país, comece com `+`.
+      example: '5511999999999'
+    OpcoesTicket:
+      type: object
+      properties:
+        externalKey:
+          type: string
+          description: >-
+            Chave sua, única por mensagem. Se a mesma chave chegar de novo, nada é reenviado e a resposta é `409`.
+            Sem chave, toda chamada envia.
+        isClosed:
+          type: boolean
+          description: 'Aba em que o ticket fica em Atendimentos: `false` = Abertos, `"pending"` = Pendentes, `true` = Fechados.'
+          default: false
+        filaId: { type: integer, description: 'ID da fila de atendimento. Fila inexistente ou inativa é ignorada.' }
+        userId: { type: integer, description: 'ID do usuário responsável pelo ticket. Usuário inexistente, inativo ou de outra empresa é ignorado.' }
+    Envio:
+      type: object
+      example:
+        success: true
+        messageId: wamid.HBgNNTUxMTk5OTk5OTk5ORUCABEYEjQ1Q0E4
+        conversaId: 1520
+      properties:
+        success: { type: boolean }
+        messageId: { type: string, description: 'ID da mensagem no WhatsApp. Use em [Consultar status da mensagem](status.md).' }
+        conversaId: { type: integer, description: ID do ticket em Atendimentos. }
+        ticketCriado: { type: boolean, description: 'Vem `false`, sem `conversaId`, quando a API usa um número da API Oficial desativado no Clixx: a mensagem sai sem abrir ticket.' }
+    Erro:
+      type: object
+      example:
+        error: 'Campos obrigatorios: body, number'
+      properties:
+        success: { type: boolean, description: 'Vem `false` quando a falha foi no envio. Em erro de campo, token ou API, só vem `error`.' }
+        error: { type: string }
+        reason: { type: string, description: 'Motivo do bloqueio da assinatura, no `403`.' }
+    Duplicada:
+      type: object
+      example:
+        success: false
+        duplicated: true
+        code: EXTERNAL_KEY_DUPLICADA
+        error: externalKey "pedido-1234-saiu" ja' foi utilizada em 2026-11-09 10:15:00; mensagem NAO reenviada. Use uma externalKey unica por mensagem.
+        messageId: wamid.HBgNNTUxMTk5OTk5OTk5ORUCABEYEjQ1Q0E4
+        conversaId: 1520
+        sentAt: '2026-11-09 10:15:00'
+      properties:
+        success: { type: boolean }
+        duplicated: { type: boolean }
+        code: { type: string }
+        error: { type: string }
+        messageId: { type: string, description: ID da mensagem enviada na primeira vez. }
+        conversaId: { type: integer }
+        sentAt: { type: string, description: Quando a primeira mensagem foi enviada. }
+    Template:
+      type: object
+      example:
+        name: confirmacao_pedido
+        language: pt_BR
+        status: APPROVED
+        category: UTILITY
+        bodyVariables: 2
+        hasDocumentHeader: false
+        hasCopyCodeButton: false
+        header: ''
+        body: 'Olá {{1}}, seu pedido {{2}} foi confirmado.'
+        footer: ''
+        buttons: [Acompanhar pedido]
+      properties:
+        name: { type: string }
+        language: { type: string }
+        status: { type: string, description: 'Status na Meta. Só `APPROVED` pode ser enviado.' }
+        category: { type: string }
+        bodyVariables: { type: integer, description: Quantas variáveis o corpo tem. }
+        hasDocumentHeader: { type: boolean, description: 'Se `true`, envie `headerDocumentUrl`.' }
+        hasCopyCodeButton: { type: boolean, description: 'Se `true`, envie `couponCode`.' }
+        header: { type: string, description: 'Texto do cabeçalho, ou o tipo de mídia entre colchetes, como `[IMAGE]`.' }
+        body: { type: string }
+        footer: { type: string }
+        buttons: { type: array, items: { type: string }, description: Texto de cada botão. }
+    MensagemStatus:
+      type: object
+      example:
+        id: wamid.HBgNNTUxMTk5OTk5OTk5ORUCABEYEjQ1Q0E4
+        conversaId: 1520
+        direction: outgoing
+        type: text
+        body: Seu pedido saiu para entrega.
+        status: delivered
+        error: null
+        createdAt: '2026-11-09 10:15:00'
+      properties:
+        id: { type: string }
+        conversaId: { type: integer, description: 'ID do ticket. `0` quando a mensagem saiu sem ticket.' }
+        direction: { type: string, enum: [outgoing, incoming] }
+        type: { type: string, description: 'Tipo da mensagem, como `text`, `image` ou `template`. Vem `null` quando a mensagem saiu sem ticket.' }
+        body: { type: string, description: 'Conteúdo da mensagem. Vem `null` quando a mensagem saiu sem ticket.' }
+        status: { type: string, enum: [sent, delivered, read, failed], description: 'Enviada, entregue, lida ou falhou.' }
+        error: { type: string, nullable: true, description: 'Motivo da falha, quando `status` é `failed`.' }
+        errorCode: { type: integer, description: 'Código de erro da Meta. Só vem quando a mensagem saiu sem ticket.' }
+        createdAt: { type: string }

@@ -17,6 +17,13 @@
 * [Messenger](referencia/messenger.md)
 * [Relatórios](referencia/relatorios.md)
 
+## API-Service (WhatsApp)
+
+* [Visão geral](api-service/README.md)
+* [Mensagens](api-service/mensagens.md)
+* [Templates](api-service/templates.md)
+* [Status da mensagem](api-service/status.md)
+
 ## Integrações
 
 * [n8n](integracoes/n8n.md)
